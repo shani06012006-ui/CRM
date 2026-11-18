@@ -5,22 +5,42 @@ import type { User } from "../types";
 interface AuthContextValue {
   user: User | null;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  register: (username: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+// Restore the session after a page refresh.
+const readStoredUser = (): User | null => {
+  const username = localStorage.getItem("username");
+  const token = localStorage.getItem("access");
+  return username && token ? { username, token } : null;
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(readStoredUser);
 
   const login = async (username: string, password: string) => {
     const response = await authApi.login(username, password);
     setUser(response.data);
   };
 
-  const logout = () => setUser(null);
+  const register = async (username: string, password: string) => {
+    const response = await authApi.register(username, password);
+    setUser(response.data);
+  };
 
-  return <AuthContext.Provider value={{ user, login, logout }}>{children}</AuthContext.Provider>;
+  const logout = async () => {
+    await authApi.logout();
+    setUser(null);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, login, register, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth(): AuthContextValue {

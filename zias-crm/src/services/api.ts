@@ -1,53 +1,112 @@
+import axios from "axios";
 import type { ApiResponse, Customer, CustomerInput, User } from "../types";
 
-// In-memory API that mirrors a Django REST Framework backend.
-// To connect your Django backend later, replace these bodies with axios calls
-// to your DRF endpoints (e.g. /api/customers/) and keep the same signatures.
+const API_URL = "http://127.0.0.1:8000/api";
 
-const delay = (ms = 400): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+// The shape the Django API returns (snake_case).
+interface ApiCustomer {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  status: Customer["status"];
+  created_at: string;
+}
 
-const respond = async <T>(data: T, message = "OK"): Promise<ApiResponse<T>> => {
-  await delay();
-  return { data, message };
+interface TokenResponse {
+  access: string;
+  refresh: string;
+}
+
+const http = axios.create({ baseURL: API_URL });
+
+// Attach the JWT to every request automatically.
+http.interceptors.request.use((config) => {
+  const token = localStorage.getItem("access");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Turn Django's error responses into readable messages.
+const extractMessage = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    if (!error.response) return "Cannot reach the server. Is the Django backend running?";
+    const data = error.response.data as Record<string, unknown> | undefined;
+    if (typeof data?.detail === "string") return data.detail;
+    const first = data ? Object.values(data)[0] : undefined;
+    if (Array.isArray(first)) return String(first[0]);
+    if (typeof first === "string") return first;
+    return "Request failed. Please try again.";
+  }
+  return "Something went wrong. Please try again.";
 };
 
-let customers: Customer[] = [
-  { id: 1, name: "Aarav Menon", email: "aarav@acme.com", phone: "+91 98470 11223", company: "Acme Corp", status: "Active", createdAt: "2026-01-12T10:00:00Z" },
-  { id: 2, name: "Priya Nair", email: "priya@nova.io", phone: "+91 90720 55481", company: "Nova Labs", status: "Lead", createdAt: "2026-02-03T09:30:00Z" },
-  { id: 3, name: "Rahul Krishnan", email: "rahul@brightsoft.in", phone: "+91 98955 77012", company: "BrightSoft", status: "Active", createdAt: "2026-03-18T14:15:00Z" },
-  { id: 4, name: "Meera Pillai", email: "meera@edge.dev", phone: "+91 94470 33340", company: "Edge Dev", status: "Inactive", createdAt: "2026-04-22T16:45:00Z" },
-  { id: 5, name: "Vikram Iyer", email: "vikram@orbit.co", phone: "+91 97440 88765", company: "Orbit Co", status: "Lead", createdAt: "2026-05-30T11:20:00Z" },
-];
-let nextId = 6;
+const call = async <T>(request: Promise<T>): Promise<T> => {
+  try {
+    return await request;
+  } catch (error) {
+    throw new Error(extractMessage(error));
+  }
+};
+
+const toCustomer = (c: ApiCustomer): Customer => ({
+  id: c.id,
+  name: c.name,
+  email: c.email,
+  phone: c.phone,
+  company: c.company,
+  status: c.status,
+  createdAt: c.created_at,
+});
+
+const saveSession = (username: string, tokens: TokenResponse): User => {
+  localStorage.setItem("username", username);
+  localStorage.setItem("access", tokens.access);
+  localStorage.setItem("refresh", tokens.refresh);
+  return { username, token: tokens.access };
+};
 
 export const authApi = {
   login: async (username: string, password: string): Promise<ApiResponse<User>> => {
-    await delay(700);
-    if (username === "admin" && password === "admin123") {
-      return { data: { username, token: "mock-jwt-token" }, message: "Logged in" };
+    const { data } = await call(http.post<TokenResponse>("/auth/login/", { username, password }));
+    return { data: saveSession(username, data), message: "Logged in" };
+  },
+
+  register: async (username: string, password: string): Promise<ApiResponse<User>> => {
+    const { data } = await call(
+      http.post<TokenResponse & { username: string }>("/auth/register/", { username, password })
+    );
+    return { data: saveSession(data.username, data), message: "Account created" };
+  },
+
+  logout: async (): Promise<void> => {
+    const refresh = localStorage.getItem("refresh");
+    if (refresh) {
+      await http.post("/auth/logout/", { refresh }).catch(() => undefined);
     }
-    throw new Error("Invalid username or password");
+    ["username", "access", "refresh"].forEach((key) => localStorage.removeItem(key));
   },
 };
 
 export const customerApi = {
-  list: () => respond<Customer[]>([...customers]),
-
-  create: (input: CustomerInput) => {
-    const customer: Customer = { ...input, id: nextId++, createdAt: new Date().toISOString() };
-    customers = [customer, ...customers];
-    return respond(customer, "Customer created");
+  list: async (): Promise<ApiResponse<Customer[]>> => {
+    const { data } = await call(http.get<ApiCustomer[]>("/customers/"));
+    return { data: data.map(toCustomer), message: "OK" };
   },
 
-  update: (id: number, input: CustomerInput) => {
-    const index = customers.findIndex((c) => c.id === id);
-    if (index === -1) throw new Error("Customer not found");
-    customers[index] = { ...customers[index], ...input };
-    return respond(customers[index], "Customer updated");
+  create: async (input: CustomerInput): Promise<ApiResponse<Customer>> => {
+    const { data } = await call(http.post<ApiCustomer>("/customers/", input));
+    return { data: toCustomer(data), message: "Customer created" };
   },
 
-  remove: (id: number) => {
-    customers = customers.filter((c) => c.id !== id);
-    return respond(id, "Customer deleted");
+  update: async (id: number, input: CustomerInput): Promise<ApiResponse<Customer>> => {
+    const { data } = await call(http.put<ApiCustomer>(`/customers/${id}/`, input));
+    return { data: toCustomer(data), message: "Customer updated" };
+  },
+
+  remove: async (id: number): Promise<ApiResponse<number>> => {
+    await call(http.delete(`/customers/${id}/`));
+    return { data: id, message: "Customer deleted" };
   },
 };
