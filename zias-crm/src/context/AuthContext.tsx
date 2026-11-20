@@ -1,50 +1,46 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
-import { authApi } from "../services/api";
-import type { User } from "../types";
+import { createContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '../interfaces';
+import { authService } from '../services/crmService';
 
-interface AuthContextValue {
+interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
-  logout: () => Promise<void>;
+  isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => void;
+  loading: boolean;
 }
 
-const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Restore the session after a page refresh.
-const readStoredUser = (): User | null => {
-  const username = localStorage.getItem("username");
-  const token = localStorage.getItem("access");
-  return username && token ? { username, token } : null;
-};
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(readStoredUser);
+  useEffect(() => {
+    const token = localStorage.getItem('crm_token');
+    const savedUser = localStorage.getItem('crm_user');
+    if (token && savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
+  }, []);
 
-  const login = async (username: string, password: string) => {
-    const response = await authApi.login(username, password);
-    setUser(response.data);
+  const login = async (email: string, password: string) => {
+    const response = await authService.login({ email, password });
+    localStorage.setItem('crm_token', response.token);
+    localStorage.setItem('crm_user', JSON.stringify(response.user));
+    setUser(response.user);
   };
 
-  const register = async (username: string, password: string) => {
-    const response = await authApi.register(username, password);
-    setUser(response.data);
-  };
-
-  const logout = async () => {
-    await authApi.logout();
+  const logout = () => {
+    localStorage.removeItem('crm_token');
+    localStorage.removeItem('crm_user');
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used inside AuthProvider");
-  return context;
-}
+};
