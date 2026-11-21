@@ -1,3 +1,5 @@
+//src/context/AuthContext.tsx
+
 import { createContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../interfaces';
 import { authService } from '../services/crmService';
@@ -5,7 +7,7 @@ import { authService } from '../services/crmService';
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -20,20 +22,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const token = localStorage.getItem('crm_token');
     const savedUser = localStorage.getItem('crm_user');
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch {
+        localStorage.removeItem('crm_user');
+      }
     }
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string) => {
-    const response = await authService.login({ email, password });
-    localStorage.setItem('crm_token', response.token);
+  const login = async (username: string, password: string) => {
+    const response = await authService.login({ username, password });
     localStorage.setItem('crm_user', JSON.stringify(response.user));
     setUser(response.user);
   };
 
   const logout = () => {
     localStorage.removeItem('crm_token');
+    localStorage.removeItem('crm_refresh');
     localStorage.removeItem('crm_user');
     setUser(null);
   };

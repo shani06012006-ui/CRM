@@ -1,51 +1,87 @@
+//src/pages/Login.tsx
+
 import { useState, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Rocket } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
+
+const getErrorMessage = (err: any): string => {
+  if (!err.response) return "Can't reach the server. Is Django running on port 8000?";
+  if (err.response.status === 401) return 'Wrong username or password.';
+  return err.response.data?.detail || 'Something went wrong. Please try again.';
+};
 
 export const Login = () => {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
+
+  if (!loading && isAuthenticated) return <Navigate to="/dashboard" replace />;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!email || !password) { setError('Please fill in all fields'); return; }
+    setError('');
+    if (!username.trim() || !password) {
+      setError('Please enter both username and password.');
+      return;
+    }
     setIsLoading(true);
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      await login(username.trim(), password);
+      navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError('Invalid credentials');
+      setError(getErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-main)', padding: '20px' }}>
-      <div style={{ backgroundColor: 'var(--bg-card)', padding: '40px', borderRadius: '24px', boxShadow: 'var(--shadow)', width: '100%', maxWidth: '400px', textAlign: 'center' }}>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)', marginBottom: '8px' }}>
-          <Rocket size={32} /> SoftFire CRM
-        </div>
-        <p style={{ marginBottom: '32px' }}>Welcome back! Please login to your account.</p>
-        
-        {error && <div style={{ backgroundColor: 'var(--danger)', color: 'white', padding: '10px', borderRadius: '8px', marginBottom: '20px', fontSize: '0.9rem' }}>{error}</div>}
+    <div className="login-page">
+      <div className="blob blob-1" />
+      <div className="blob blob-2" />
+      <div className="blob blob-3" />
 
-        <form onSubmit={handleSubmit} style={{ textAlign: 'left' }}>
+      <div className="login-card">
+        <div className="brand login-brand">
+          <div className="brand-icon"><Rocket size={22} /></div>
+          <span className="brand-name">SoftFire CRM</span>
+        </div>
+
+        <h1>Hey there! 👋</h1>
+        <p className="sub">Welcome back! Please login to your account.</p>
+
+        {error && <div className="alert alert-error">{error}</div>}
+
+        <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
-            <label>Email Address</label>
-            <input type="email" className="input-field" placeholder="jane@example.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <label htmlFor="username">Username</label>
+            <input
+              id="username"
+              className="input-field"
+              placeholder="Enter your username"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
           <div className="input-group">
-            <label>Password</label>
-            <input type="password" className="input-field" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              type="password"
+              className="input-field"
+              placeholder="••••••••"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', marginTop: '10px' }} disabled={isLoading}>
-            {isLoading ? 'Logging in...' : 'Login'}
+          <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login ✨'}
           </button>
         </form>
       </div>

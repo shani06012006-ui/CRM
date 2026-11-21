@@ -1,16 +1,17 @@
-from django.urls import include, path
-from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
+#backend/crm/urls.py
 
-from . import views
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .views import LeadViewSet, DashboardStatsView
 
 router = DefaultRouter()
-router.register("customers", views.CustomerViewSet, basename="customer")
+router.register(r'leads', LeadViewSet, basename='leads')
 
 urlpatterns = [
-    path("auth/register/", views.RegisterView.as_view(), name="register"),
-    path("auth/login/", views.LoginView.as_view(), name="login"),
-    path("auth/refresh/", TokenRefreshView.as_view(), name="refresh"),
-    path("auth/logout/", views.LogoutView.as_view(), name="logout"),
-    path("", include(router.urls)),
+    # Use the default view here:
+    path('auth/login/', TokenObtainPairView.as_view(), name='token_obtain_pair'), 
+    path('auth/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('', include(router.urls)),
 ]

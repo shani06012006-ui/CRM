@@ -1,14 +1,14 @@
-// Core Models
+//src/interfaces/index.ts
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: string;
-  avatar?: string;
 }
 
 export interface AuthResponse {
-  token: string;
+  token: string;  
   user: User;
 }
 
@@ -20,7 +20,7 @@ export interface Lead {
   phone: string;
   status: 'New' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed';
   value: number;
-  createdAt: string;
+  created_at: string;
 }
 
 export interface StatsData {
@@ -30,9 +30,8 @@ export interface StatsData {
   conversionRate: number;
 }
 
-// API Request/Response Models
 export interface LoginCredentials {
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -43,9 +42,4 @@ export interface CreateLeadDTO {
   phone: string;
   status: Lead['status'];
   value: number;
-}
-
-export interface ApiError {
-  message: string;
-  statusCode: number;
 }

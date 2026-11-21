@@ -1,3 +1,5 @@
+//src/hooks/useFetch.ts
+
 import { useState, useEffect, useCallback } from 'react';
 
 export function useFetch<T>(fetchFn: () => Promise<T>, dependencies: any[] = []) {
