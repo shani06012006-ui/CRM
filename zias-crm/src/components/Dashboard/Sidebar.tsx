@@ -1,8 +1,7 @@
-//src/components/Dashboard/Sidebar.tsx
-
 import { LayoutDashboard, Users, PieChart, Settings, LogOut, Rocket, Sparkles } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useToast } from '../../context/ToastContext';
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
@@ -13,6 +12,13 @@ const navItems = [
 
 export const Sidebar = () => {
   const { logout } = useAuth();
+  const toast = useToast();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login', { replace: true });
+  };
 
   return (
     <aside className="sidebar">
@@ -35,13 +41,18 @@ export const Sidebar = () => {
       </nav>
 
       <div className="upgrade-card">
-        <Sparkles size={22} color="#f25aa3" />
+        <Sparkles size={22} />
         <h4>Upgrade to Pro</h4>
         <p>Unlock advanced features</p>
-        <button className="btn btn-primary btn-sm btn-block">Upgrade</button>
+        <button
+          className="btn btn-primary btn-sm btn-block"
+          onClick={() => toast.show('Pro plans are coming soon 🐾', 'info')}
+        >
+          Upgrade
+        </button>
       </div>
 
-      <button className="logout-btn" onClick={logout}>
+      <button className="logout-btn" onClick={handleLogout}>
         <LogOut size={20} />
         <span className="nav-label">Logout</span>
       </button>

@@ -9,43 +9,50 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  updateUser: (user: User) => void;
   loading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const clearSession = () => {
+  localStorage.removeItem('crm_token');
+  localStorage.removeItem('crm_refresh');
+  localStorage.removeItem('crm_user');
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // On page load, restore the user from the server instead of trusting localStorage
   useEffect(() => {
-    const token = localStorage.getItem('crm_token');
-    const savedUser = localStorage.getItem('crm_user');
-    if (token && savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch {
-        localStorage.removeItem('crm_user');
-      }
+    if (!localStorage.getItem('crm_token')) {
+      setLoading(false);
+      return;
     }
-    setLoading(false);
+    authService
+      .me()
+      .then(setUser)
+      .catch(() => clearSession())
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (username: string, password: string) => {
-    const response = await authService.login({ username, password });
-    localStorage.setItem('crm_user', JSON.stringify(response.user));
-    setUser(response.user);
+    await authService.login(username, password);
+    const me = await authService.me();
+    setUser(me);
   };
 
   const logout = () => {
-    localStorage.removeItem('crm_token');
-    localStorage.removeItem('crm_refresh');
-    localStorage.removeItem('crm_user');
+    clearSession();
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, loading }}>
+    <AuthContext.Provider
+      value={{ user, isAuthenticated: !!user, login, logout, updateUser: setUser, loading }}
+    >
       {children}
     </AuthContext.Provider>
   );

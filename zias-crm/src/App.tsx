@@ -1,7 +1,6 @@
-//App.tsx
-
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from './components/Auth/ProtectedRoute';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
@@ -29,23 +28,19 @@ const AppLayout = () => (
   </div>
 );
 
-const App = () => {
-  return (
-    <BrowserRouter>
-      {/* AuthProvider wraps EVERYTHING */}
+const App = () => (
+  <BrowserRouter>
+    <ToastProvider>
       <AuthProvider>
         <Routes>
-          {/* Login is INSIDE AuthProvider, but NOT inside ProtectedRoute */}
           <Route path="/login" element={<Login />} />
-          
-          {/* These routes are protected */}
           <Route element={<ProtectedRoute />}>
             <Route path="/*" element={<AppLayout />} />
           </Route>
         </Routes>
       </AuthProvider>
-    </BrowserRouter>
-  );
-};
+    </ToastProvider>
+  </BrowserRouter>
+);
 
 export default App;

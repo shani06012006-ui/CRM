@@ -1,26 +1,29 @@
 //src/interfaces/index.ts
 
+export type LeadStatus = 'New' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed';
+
+export const STATUSES: LeadStatus[] = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Closed'];
+
 export interface User {
-  id: string;
-  name: string;
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
   email: string;
+  name: string;
   role: string;
 }
 
-export interface AuthResponse {
-  token: string;  
-  user: User;
-}
-
 export interface Lead {
-  id: string;
+  id: number;
   name: string;
   company: string;
   email: string;
   phone: string;
-  status: 'New' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed';
+  status: LeadStatus;
   value: number;
   created_at: string;
+  owner: number | null;
 }
 
 export interface StatsData {
@@ -28,6 +31,8 @@ export interface StatsData {
   openDeals: number;
   revenue: number;
   conversionRate: number;
+  leadsTrend: number;
+  leadsThisMonth: number;
 }
 
 export interface LoginCredentials {
@@ -40,6 +45,6 @@ export interface CreateLeadDTO {
   company: string;
   email: string;
   phone: string;
-  status: Lead['status'];
+  status: LeadStatus;
   value: number;
 }

@@ -6,19 +6,27 @@ interface StatsCardProps {
   title: string;
   value: string;
   icon: ReactNode;
-  trend: string;
-  trendUp: boolean;
+  trend?: { value: string; up: boolean };
+  sub?: string;
 }
 
-export const StatsCard = ({ title, value, icon, trend, trendUp }: StatsCardProps) => (
+export const StatsCard = ({ title, value, icon, trend, sub }: StatsCardProps) => (
   <div className="card stat-card">
     <div className="stat-head">
       <span className="stat-title">{title}</span>
       <div className="stat-icon">{icon}</div>
     </div>
     <div className="stat-value">{value}</div>
-    <div className={`stat-trend ${trendUp ? 'up' : 'down'}`}>
-      {trendUp ? '↑' : '↓'} {trend} <span>vs last month</span>
-    </div>
+    {trend ? (
+      <div className={`stat-trend ${trend.up ? 'up' : 'down'}`}>
+        {trend.up ? '↑' : '↓'} {trend.value} <span>vs last month</span>
+      </div>
+    ) : (
+      sub && (
+        <div className="stat-trend">
+          <span>{sub}</span>
+        </div>
+      )
+    )}
   </div>
 );
