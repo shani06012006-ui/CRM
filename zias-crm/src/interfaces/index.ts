@@ -2,6 +2,8 @@ export type LeadStatus = 'New' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Clo
 
 export const STATUSES: LeadStatus[] = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Closed'];
 
+export type NoteKind = 'note' | 'call' | 'email' | 'meeting';
+
 export interface User {
   id: number;
   username: string;
@@ -34,17 +36,54 @@ export interface Activity {
   created_at: string;
 }
 
+export interface Note {
+  id: number;
+  lead: number;
+  kind: NoteKind;
+  body: string;
+  created_at: string;
+}
+
+export interface Task {
+  id: number;
+  lead: number;
+  title: string;
+  due_date: string | null; // YYYY-MM-DD
+  done: boolean;
+  completed_at: string | null;
+  created_at: string;
+}
+
 export interface StatsData {
   totalLeads: number;
   openDeals: number;
   revenue: number;
   conversionRate: number;
   trends: {
-    totalLeads: number;      // % change, new leads this month vs last
-    openDeals: number;       // % change, open deals created this month vs last
-    revenue: number;       
-    conversionRate: number;  
+    totalLeads: number;
+    openDeals: number;
+    revenue: number;
+    conversionRate: number;
   };
+}
+
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export interface LeadPage extends PaginatedResponse<Lead> {
+  total_value: number;
+}
+
+export interface LeadQuery {
+  page?: number;
+  page_size?: number;
+  q?: string;
+  status?: LeadStatus | '';
+  ordering?: string;
 }
 
 export interface LoginCredentials {

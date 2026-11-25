@@ -7,14 +7,15 @@ import { LeadFormModal } from '../components/Leads/LeadFormModal';
 import { ErrorState } from '../components/Common/ErrorState';
 import { useFetch } from '../hooks/useFetch';
 import { useLeadActions } from '../hooks/useLeadActions';
+import { useOnNewLead } from '../hooks/useShortcuts';
 import { crmService } from '../services/crmService';
-import { Activity, Lead, StatsData } from '../interfaces';
+import { Activity, Lead, LeadPage, StatsData } from '../interfaces';
 import { formatINR, formatTrend } from '../utils/format';
 
 export const Dashboard = () => {
   const {
     data: leads, error: leadsError, loading: leadsLoading, refetch: refetchLeads,
-  } = useFetch<Lead[]>(crmService.getLeads);
+  } = useFetch<LeadPage>(() => crmService.getLeads({ page_size: 5 }));
 
   const {
     data: stats, error: statsError, loading: statsLoading, refetch: refetchStats,
@@ -35,6 +36,12 @@ export const Dashboard = () => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Lead | null>(null);
 
+  // Pressing N anywhere opens the form on this page
+  useOnNewLead(() => {
+    setEditing(null);
+    setShowForm(true);
+  });
+
   const openCreate = () => {
     setEditing(null);
     setShowForm(true);
@@ -49,12 +56,11 @@ export const Dashboard = () => {
     return <div className="loader"><span className="spinner" />Loading your dashboard...</div>;
   }
 
-  // An error with no data means the section never loaded.
-  // An error with data means a refresh failed and the old data is still shown.
   const statsFailed = !!statsError && !stats;
   const leadsFailed = !!leadsError && !leads;
   const activityFailed = !!activityError && !activities;
-  const staleData = (!!leadsError && !!leads) || (!!statsError && !!stats) || (!!activityError && !!activities);
+  const staleData =
+    (!!leadsError && !!leads) || (!!statsError && !!stats) || (!!activityError && !!activities);
 
   const trends = stats?.trends;
 
@@ -65,7 +71,7 @@ export const Dashboard = () => {
           <h1>CRM Dashboard</h1>
           <p>Manage leads, pipeline, and sales efficiently ✨</p>
         </div>
-        <button className="btn btn-primary" onClick={openCreate}>
+        <button className="btn btn-primary" onClick={openCreate} title="New lead (N)">
           <Plus size={18} /> Add New Lead
         </button>
       </div>
@@ -114,7 +120,7 @@ export const Dashboard = () => {
           <ErrorState message={leadsError!} onRetry={refetchLeads} />
         ) : (
           <PipelineTable
-            leads={leads ?? []}
+            leads={leads?.results ?? []}
             onEdit={openEdit}
             onDelete={remove}
             onStatusChange={changeStatus}

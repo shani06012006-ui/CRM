@@ -1,12 +1,11 @@
-//src/components/Dashboard/Header.tsx
-
-import { FormEvent, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Bell, Mail, Search } from 'lucide-react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Bell, Keyboard, Mail, Search } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useFetch } from '../../hooks/useFetch';
+import { SHORTCUTS_EVENT } from '../../hooks/useShortcuts';
 import { crmService } from '../../services/crmService';
-import { Activity, Lead } from '../../interfaces';
+import { Activity, LeadPage } from '../../interfaces';
 import { timeAgo } from '../../utils/format';
 
 type Panel = 'bell' | 'mail' | null;
@@ -14,10 +13,25 @@ type Panel = 'bell' | 'mail' | null;
 export const Header = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: leads, refetch: refetchLeads } = useFetch<Lead[]>(crmService.getLeads);
+  const location = useLocation();
+
   const { data: activities, refetch: refetchActivity } = useFetch<Activity[]>(
     () => crmService.getActivity(8)
   );
+
+  const [followUps, setFollowUps] = useState<LeadPage | null>(null);
+
+  const loadFollowUps = useCallback(() => {
+    crmService
+      .getLeads({ status: 'New', page_size: 5 })
+      .then(setFollowUps)
+      .catch(() => setFollowUps(null));
+  }, []);
+
+  // Reload the badge on mount and whenever the user moves to another page
+  useEffect(() => {
+    loadFollowUps();
+  }, [loadFollowUps, location.pathname]);
 
   const [query, setQuery] = useState('');
   const [panel, setPanel] = useState<Panel>(null);
@@ -44,9 +58,8 @@ export const Header = () => {
       return;
     }
     setPanel(p);
-    // Refresh whichever panel just opened
     if (p === 'bell') refetchActivity();
-    else refetchLeads();
+    else loadFollowUps();
   };
 
   const submitSearch = (e: FormEvent) => {
@@ -54,6 +67,7 @@ export const Header = () => {
     const q = query.trim();
     navigate(q ? `/leads?q=${encodeURIComponent(q)}` : '/leads');
     setQuery('');
+    setPanel(null);
   };
 
   const openLeadByName = (name: string) => {
@@ -61,7 +75,7 @@ export const Header = () => {
     setPanel(null);
   };
 
-  const followUps = (leads ?? []).filter((l) => l.status === 'New');
+  const followUpCount = followUps?.count ?? 0;
 
   return (
     <header className="topbar">
@@ -73,11 +87,21 @@ export const Header = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           aria-label="Search leads"
+          data-search-input
         />
       </form>
 
       <div className="topbar-right">
         <div className="topbar-icons" ref={wrapRef}>
+          <button
+            className="icon-btn"
+            aria-label="Keyboard shortcuts"
+            title="Keyboard shortcuts (?)"
+            onClick={() => window.dispatchEvent(new Event(SHORTCUTS_EVENT))}
+          >
+            <Keyboard size={19} />
+          </button>
+
           <div className="popover-anchor">
             <button className="icon-btn" aria-label="Recent activity" onClick={() => togglePanel('bell')}>
               <Bell size={19} />
@@ -96,9 +120,7 @@ export const Header = () => {
                         disabled={!a.lead}
                         onClick={() => openLeadByName(a.lead_name)}
                       >
-                        <span>
-                          {a.description}
-                        </span>
+                        <span>{a.description}</span>
                         <small>{timeAgo(a.created_at)}</small>
                       </button>
                     ))}
@@ -111,16 +133,16 @@ export const Header = () => {
           <div className="popover-anchor">
             <button className="icon-btn" aria-label="Leads waiting for follow-up" onClick={() => togglePanel('mail')}>
               <Mail size={19} />
-              {followUps.length > 0 && <span className="icon-count">{followUps.length}</span>}
+              {followUpCount > 0 && <span className="icon-count">{followUpCount}</span>}
             </button>
             {panel === 'mail' && (
               <div className="popover">
                 <h4>Waiting for follow-up</h4>
-                {followUps.length === 0 ? (
+                {followUpCount === 0 ? (
                   <p className="popover-empty">All caught up 🌿</p>
                 ) : (
                   <div className="popover-list">
-                    {followUps.slice(0, 5).map((l) => (
+                    {(followUps?.results ?? []).map((l) => (
                       <button key={l.id} className="popover-item" onClick={() => openLeadByName(l.name)}>
                         <span>
                           {l.name}
@@ -129,6 +151,11 @@ export const Header = () => {
                         <small>{timeAgo(l.created_at)}</small>
                       </button>
                     ))}
+                    {followUpCount > (followUps?.results.length ?? 0) && (
+                      <button className="popover-item" onClick={() => { navigate('/leads?status=New'); setPanel(null); }}>
+                        <span>View all {followUpCount} new leads</span>
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

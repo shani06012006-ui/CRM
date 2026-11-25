@@ -15,8 +15,9 @@ export const Sidebar = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
+    toast.show('Signed out. See you soon 🐾', 'info');
     navigate('/login', { replace: true });
   };
 

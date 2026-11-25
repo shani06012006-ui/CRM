@@ -1,8 +1,10 @@
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { CreateLeadDTO, Lead, STATUSES, LeadStatus } from '../../interfaces';
 import { crmService, getApiError } from '../../services/crmService';
 import { useToast } from '../../context/ToastContext';
+import { useConfirm } from '../../context/ConfirmContext';
 
 const emptyForm: CreateLeadDTO = {
   name: '',
@@ -13,6 +15,18 @@ const emptyForm: CreateLeadDTO = {
   value: 0,
 };
 
+const toForm = (lead: Lead | null): CreateLeadDTO =>
+  lead
+    ? {
+        name: lead.name,
+        company: lead.company,
+        email: lead.email,
+        phone: lead.phone ?? '',
+        status: lead.status,
+        value: Number(lead.value),
+      }
+    : emptyForm;
+
 interface LeadFormModalProps {
   lead: Lead | null; // null = create, Lead = edit
   onClose: () => void;
@@ -21,30 +35,63 @@ interface LeadFormModalProps {
 
 export const LeadFormModal = ({ lead, onClose, onSaved }: LeadFormModalProps) => {
   const toast = useToast();
+  const confirm = useConfirm();
   const isEdit = !!lead;
+  const formRef = useRef<HTMLFormElement>(null);
 
-  const [form, setForm] = useState<CreateLeadDTO>(() =>
-    lead
-      ? {
-          name: lead.name,
-          company: lead.company,
-          email: lead.email,
-          phone: lead.phone ?? '',
-          status: lead.status,
-          value: Number(lead.value),
-        }
-      : emptyForm
-  );
+  const [initial] = useState<CreateLeadDTO>(() => toForm(lead));
+  const [form, setForm] = useState<CreateLeadDTO>(initial);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  const isDirty = JSON.stringify(form) !== JSON.stringify(initial);
+
+  // Closing with unsaved edits asks first
+  const tryClose = useCallback(async () => {
+    if (isDirty) {
+      const discard = await confirm({
+        title: 'Discard your changes?',
+        message: 'You have unsaved changes in this form.',
+        confirmLabel: 'Discard',
+        cancelLabel: 'Keep editing',
+        danger: true,
+      });
+      if (!discard) return;
+    }
+    onClose();
+  }, [isDirty, onClose, confirm]);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') {
+        tryClose();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        formRef.current?.requestSubmit();
+      }
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [onClose]);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [tryClose]);
+
+  // Warn before refreshing or leaving the page with unsaved edits
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [isDirty]);
 
   const update = <K extends keyof CreateLeadDTO>(key: K, value: CreateLeadDTO[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -70,8 +117,8 @@ export const LeadFormModal = ({ lead, onClose, onSaved }: LeadFormModalProps) =>
     }
   };
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
+  return createPortal(
+    <div className="modal-backdrop" onClick={tryClose}>
       <div
         className="card modal"
         role="dialog"
@@ -81,18 +128,19 @@ export const LeadFormModal = ({ lead, onClose, onSaved }: LeadFormModalProps) =>
       >
         <div className="modal-head">
           <h3>{isEdit ? 'Edit lead' : 'Add a new lead'}</h3>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-btn" onClick={tryClose} aria-label="Close" title="Close (Esc)">
             <X size={18} />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="form-grid modal-body">
+        <form ref={formRef} onSubmit={handleSubmit} className="form-grid modal-body">
           <div className="input-group">
             <label htmlFor="lead-name">Name</label>
             <input
               id="lead-name"
               className="input-field"
               required
+              autoFocus
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
             />
@@ -160,12 +208,16 @@ export const LeadFormModal = ({ lead, onClose, onSaved }: LeadFormModalProps) =>
             <button type="submit" className="btn btn-primary" disabled={saving}>
               {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Save lead'}
             </button>
-            <button type="button" className="btn btn-outline" onClick={onClose}>
+            <button type="button" className="btn btn-outline" onClick={tryClose}>
               Cancel
             </button>
+            <span className="form-hint">
+              <kbd className="kbd">Ctrl</kbd> + <kbd className="kbd">Enter</kbd> saves
+            </span>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

@@ -1,4 +1,3 @@
-//src/api/axiosClients.ts
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
 const API_URL = 'http://127.0.0.1:8000/api';
@@ -28,8 +27,11 @@ axiosClient.interceptors.response.use(
     const original = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     const url = original?.url ?? '';
 
-    // Let login/refresh failures reach the caller so the form can show the message
-    const isAuthCall = url.includes('/auth/login/') || url.includes('/auth/refresh/');
+    // Login, refresh, and logout failures go straight to the caller
+    const isAuthCall =
+      url.includes('/auth/login/') ||
+      url.includes('/auth/refresh/') ||
+      url.includes('/auth/logout/');
 
     if (error.response?.status !== 401 || isAuthCall || original._retry) {
       return Promise.reject(error);
@@ -44,8 +46,14 @@ axiosClient.interceptors.response.use(
 
     try {
       original._retry = true;
-      const { data } = await axios.post<{ access: string }>(`${API_URL}/auth/refresh/`, { refresh });
+      const { data } = await axios.post<{ access: string; refresh?: string }>(
+        `${API_URL}/auth/refresh/`,
+        { refresh }
+      );
       localStorage.setItem('crm_token', data.access);
+      // With rotation on, the server returns a new refresh token. Save it.
+      if (data.refresh) localStorage.setItem('crm_refresh', data.refresh);
+
       original.headers.Authorization = `Bearer ${data.access}`;
       return axiosClient(original);
     } catch {

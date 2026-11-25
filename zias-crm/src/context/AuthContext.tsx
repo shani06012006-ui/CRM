@@ -1,5 +1,3 @@
-//src/context/AuthContext.tsx
-
 import { createContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../interfaces';
 import { authService } from '../services/crmService';
@@ -8,14 +6,14 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   updateUser: (user: User) => void;
   loading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const clearSession = () => {
+const clearLocalSession = () => {
   localStorage.removeItem('crm_token');
   localStorage.removeItem('crm_refresh');
   localStorage.removeItem('crm_user');
@@ -34,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     authService
       .me()
       .then(setUser)
-      .catch(() => clearSession())
+      .catch(() => clearLocalSession())
       .finally(() => setLoading(false));
   }, []);
 
@@ -44,8 +42,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(me);
   };
 
-  const logout = () => {
-    clearSession();
+  const logout = async () => {
+    await authService.logout();
     setUser(null);
   };
 
