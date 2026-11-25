@@ -6,7 +6,7 @@ import { Bell, Mail, Search } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { useFetch } from '../../hooks/useFetch';
 import { crmService } from '../../services/crmService';
-import { Lead } from '../../interfaces';
+import { Activity, Lead } from '../../interfaces';
 import { timeAgo } from '../../utils/format';
 
 type Panel = 'bell' | 'mail' | null;
@@ -15,12 +15,14 @@ export const Header = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: leads, refetch: refetchLeads } = useFetch<Lead[]>(crmService.getLeads);
+  const { data: activities, refetch: refetchActivity } = useFetch<Activity[]>(
+    () => crmService.getActivity(8)
+  );
 
   const [query, setQuery] = useState('');
   const [panel, setPanel] = useState<Panel>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Close the open panel on outside click or Escape
   useEffect(() => {
     const onClick = (e: MouseEvent) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setPanel(null);
@@ -39,10 +41,12 @@ export const Header = () => {
   const togglePanel = (p: Exclude<Panel, null>) => {
     if (panel === p) {
       setPanel(null);
-    } else {
-      setPanel(p);
-      refetchLeads(); // keep the panels fresh when opened
+      return;
     }
+    setPanel(p);
+    // Refresh whichever panel just opened
+    if (p === 'bell') refetchActivity();
+    else refetchLeads();
   };
 
   const submitSearch = (e: FormEvent) => {
@@ -52,14 +56,12 @@ export const Header = () => {
     setQuery('');
   };
 
-  const openLead = (lead: Lead) => {
-    navigate(`/leads?q=${encodeURIComponent(lead.name)}`);
+  const openLeadByName = (name: string) => {
+    navigate(`/leads?q=${encodeURIComponent(name)}`);
     setPanel(null);
   };
 
-  const allLeads = leads ?? [];
-  const recentLeads = allLeads.slice(0, 5);
-  const followUps = allLeads.filter((l) => l.status === 'New');
+  const followUps = (leads ?? []).filter((l) => l.status === 'New');
 
   return (
     <header className="topbar">
@@ -83,17 +85,21 @@ export const Header = () => {
             {panel === 'bell' && (
               <div className="popover">
                 <h4>Recent activity</h4>
-                {recentLeads.length === 0 ? (
-                  <p className="popover-empty">No leads yet 🐾</p>
+                {(activities ?? []).length === 0 ? (
+                  <p className="popover-empty">No activity yet 🐾</p>
                 ) : (
                   <div className="popover-list">
-                    {recentLeads.map((l) => (
-                      <button key={l.id} className="popover-item" onClick={() => openLead(l)}>
+                    {(activities ?? []).map((a) => (
+                      <button
+                        key={a.id}
+                        className="popover-item"
+                        disabled={!a.lead}
+                        onClick={() => openLeadByName(a.lead_name)}
+                      >
                         <span>
-                          {l.name}
-                          <small>{l.company}</small>
+                          {a.description}
                         </span>
-                        <small>{timeAgo(l.created_at)}</small>
+                        <small>{timeAgo(a.created_at)}</small>
                       </button>
                     ))}
                   </div>
@@ -115,7 +121,7 @@ export const Header = () => {
                 ) : (
                   <div className="popover-list">
                     {followUps.slice(0, 5).map((l) => (
-                      <button key={l.id} className="popover-item" onClick={() => openLead(l)}>
+                      <button key={l.id} className="popover-item" onClick={() => openLeadByName(l.name)}>
                         <span>
                           {l.name}
                           <small>{l.company}</small>

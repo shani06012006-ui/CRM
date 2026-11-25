@@ -1,5 +1,3 @@
-//src/interfaces/index.ts
-
 export type LeadStatus = 'New' | 'Qualified' | 'Proposal' | 'Negotiation' | 'Closed';
 
 export const STATUSES: LeadStatus[] = ['New', 'Qualified', 'Proposal', 'Negotiation', 'Closed'];
@@ -23,7 +21,17 @@ export interface Lead {
   status: LeadStatus;
   value: number;
   created_at: string;
+  closed_at: string | null;
   owner: number | null;
+}
+
+export interface Activity {
+  id: number;
+  action: 'created' | 'updated' | 'status_changed' | 'deleted';
+  description: string;
+  lead_name: string;
+  lead: number | null;
+  created_at: string;
 }
 
 export interface StatsData {
@@ -31,8 +39,12 @@ export interface StatsData {
   openDeals: number;
   revenue: number;
   conversionRate: number;
-  leadsTrend: number;
-  leadsThisMonth: number;
+  trends: {
+    totalLeads: number;      // % change, new leads this month vs last
+    openDeals: number;       // % change, open deals created this month vs last
+    revenue: number;       
+    conversionRate: number;  
+  };
 }
 
 export interface LoginCredentials {

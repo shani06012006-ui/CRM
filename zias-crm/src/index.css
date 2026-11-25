@@ -1331,3 +1331,70 @@ select.input-field {
 }
 
 .filter-select { width: 190px; }
+
+
+/* =========================================================
+   Step 3: error states
+   ========================================================= */
+
+.error-state {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 26px;
+  margin-bottom: 24px;
+  border-radius: 36px 26px 36px 26px;
+  border: 1.5px dashed #f5c6bf;
+  background: #fff7f5;
+  box-shadow: none;
+}
+
+.error-state.compact {
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  border-radius: 22px 16px 22px 16px;
+  background: #fff9f0;
+  border-color: var(--caramel-200);
+}
+
+.error-icon {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50% 50% 46% 46% / 60% 60% 40% 40%;
+  background: #fbe9e6;
+  color: var(--danger);
+}
+
+.error-state.compact .error-icon {
+  width: 30px;
+  height: 30px;
+  background: var(--cream-100);
+  color: var(--caramel-600);
+}
+
+.error-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.error-text strong {
+  font-family: 'Baloo 2', sans-serif;
+  font-size: 1.05rem;
+  color: var(--text-main);
+}
+
+.error-state.compact .error-text strong { font-size: 0.95rem; }
+
+.error-text span {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.error-state .btn { flex-shrink: 0; }

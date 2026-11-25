@@ -5,6 +5,11 @@ export const formatINR = (value: number | string) =>
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 
+export const formatTrend = (change: number, unit: '%' | 'pts' = '%') => ({
+  value: unit === '%' ? `${Math.abs(change)}%` : `${Math.abs(change)} pts`,
+  up: change >= 0,
+});
+
 export const timeAgo = (iso: string) => {
   const diffMs = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diffMs / 60000);

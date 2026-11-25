@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 from rest_framework import serializers
-from .models import Lead
+
+from .models import Activity, Lead
 
 
 class LeadSerializer(serializers.ModelSerializer):
@@ -10,8 +11,17 @@ class LeadSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Lead
-        fields = ['id', 'name', 'company', 'email', 'phone', 'status', 'value', 'created_at', 'owner']
-        read_only_fields = ('id', 'owner', 'created_at')
+        fields = [
+            'id', 'name', 'company', 'email', 'phone', 'status',
+            'value', 'created_at', 'closed_at', 'owner',
+        ]
+        read_only_fields = ('id', 'owner', 'created_at', 'closed_at')
+
+
+class ActivitySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Activity
+        fields = ['id', 'action', 'description', 'lead_name', 'lead', 'created_at']
 
 
 class UserSerializer(serializers.ModelSerializer):

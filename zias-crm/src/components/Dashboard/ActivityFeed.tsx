@@ -1,19 +1,27 @@
 //src/components/Dashboard/ActivityFeed.tsx
 
 import { useNavigate } from 'react-router-dom';
-import { Lead } from '../../interfaces';
+import { Activity } from '../../interfaces';
 import { timeAgo } from '../../utils/format';
 
 interface ActivityFeedProps {
-  leads: Lead[];
+  activities: Activity[];
 }
 
-export const ActivityFeed = ({ leads }: ActivityFeedProps) => {
+const toneFor: Record<Activity['action'], string> = {
+  created: 'dot-mint',
+  updated: 'dot-lilac',
+  status_changed: 'dot-pink',
+  deleted: 'dot-peach',
+};
+
+export const ActivityFeed = ({ activities }: ActivityFeedProps) => {
   const navigate = useNavigate();
 
-  const recent = [...leads]
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-    .slice(0, 5);
+  const openLead = (activity: Activity) => {
+    if (!activity.lead) return; // deleted leads have nothing to open
+    navigate(`/leads?q=${encodeURIComponent(activity.lead_name)}`);
+  };
 
   return (
     <div className="card">
@@ -23,24 +31,24 @@ export const ActivityFeed = ({ leads }: ActivityFeedProps) => {
       </div>
 
       <div className="activity-list">
-        {recent.length === 0 && (
+        {activities.length === 0 && (
           <p className="muted">No activity yet. Add a lead to see it here ✨</p>
         )}
-        {recent.map((lead) => (
+        {activities.map((activity) => (
           <div
-            key={lead.id}
+            key={activity.id}
             className="activity-item"
-            role="button"
-            tabIndex={0}
-            onClick={() => navigate(`/leads?q=${encodeURIComponent(lead.name)}`)}
+            role={activity.lead ? 'button' : undefined}
+            tabIndex={activity.lead ? 0 : undefined}
+            onClick={() => openLead(activity)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') navigate(`/leads?q=${encodeURIComponent(lead.name)}`);
+              if (e.key === 'Enter') openLead(activity);
             }}
           >
-            <span className="dot" data-status={lead.status} />
+            <span className={`dot ${toneFor[activity.action]}`} />
             <div>
-              <p className="activity-title">{lead.name} from {lead.company} was added</p>
-              <p className="activity-time">{lead.status} · {timeAgo(lead.created_at)}</p>
+              <p className="activity-title">{activity.description}</p>
+              <p className="activity-time">{timeAgo(activity.created_at)}</p>
             </div>
           </div>
         ))}

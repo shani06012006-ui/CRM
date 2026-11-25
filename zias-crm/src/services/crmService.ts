@@ -1,7 +1,7 @@
 //src/services/crmService.ts
 
 import axiosClient from '../api/axiosClient';
-import { Lead, StatsData, CreateLeadDTO, User } from '../interfaces';
+import { Lead, StatsData, CreateLeadDTO, User, Activity } from '../interfaces';
 
 export const getApiError = (err: any): string => {
   if (!err?.response) return "Can't reach the server. Is Django running on port 8000?";
@@ -61,6 +61,10 @@ export const crmService = {
 
   deleteLead: async (id: number): Promise<void> => {
     await axiosClient.delete(`/leads/${id}/`);
+  },
+  getActivity: async (limit = 20): Promise<Activity[]> => {
+    const { data } = await axiosClient.get<Activity[]>('/activity/', { params: { limit } });
+    return data;
   },
 };
 
